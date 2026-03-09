@@ -49,6 +49,7 @@ android {
 dependencies {
     implementation(libs.bundles.androidx)
     implementation(libs.material)
+    implementation("androidx.fragment:fragment-ktx:1.8.0")
 
     implementation(project(":lib"))
 
