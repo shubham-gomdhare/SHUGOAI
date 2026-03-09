@@ -1,0 +1,23 @@
+<resources>
+    <string name="app_name">SHUGO AI</string>
+    <string name="no_model_selected">No model selected</string>
+    <string name="pick_a_gguf_model">Pick a GGUF model...</string>
+    <string name="send_description">Send</string>
+    <string name="parsing_gguf">Parsing GGUF...</string>
+    <string name="copying_file">Copying file...</string>
+    <string name="loading_model">Loading model...</string>
+    <string name="type_and_send">Type and send a message!</string>
+
+    <string name="welcome_title">SHUGO AI</string>
+    <string name="welcome_subtitle">Your private, local AI assistant. Select a GGUF model to begin.</string>
+    <string name="select_model">Select Model</string>
+    <string name="models_title">Models</string>
+    <string name="change_model">Change Model</string>
+    <string name="clear_chat">Clear Chat</string>
+    <string name="stop_description">Stop generation</string>
+    <string name="app_logo_description">ShuGo AI Logo</string>
+    <string name="waiting_for_model">Waiting for model...</string>
+    <string name="model_loaded">Model loaded</string>
+    <string name="welcome_message">Hello! I\'m ShuGo AI. Please load a GGUF model to begin.</string>
+    <string name="load_model_to_start">Load a model to start...</string>
+</resources>
