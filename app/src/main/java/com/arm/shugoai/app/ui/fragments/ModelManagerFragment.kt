@@ -68,27 +68,32 @@ class ModelManagerFragment : Fragment(R.layout.fragment_model_manager) {
     }
 
     private fun importModel(uri: Uri) {
-        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
-            val metadata = requireContext().contentResolver.openInputStream(uri)?.use {
-                GgufMetadataReader.create().readStructuredMetadata(it)
-            }
-
-            val fileName = if (metadata != null) {
-                metadata.filename() + ".gguf"
-            } else {
-                uri.lastPathSegment?.substringAfterLast('/') ?: "model-${System.currentTimeMillis()}.gguf"
-            }
-
-            withContext(Dispatchers.Main) {
-                Toast.makeText(context, "Importing $fileName...", Toast.LENGTH_SHORT).show()
-            }
-
-            requireContext().contentResolver.openInputStream(uri)?.use { input ->
-                val importedFile = modelManager.importModel(fileName, input)
-                withContext(Dispatchers.Main) {
-                    Toast.makeText(context, "Imported ${importedFile.name}", Toast.LENGTH_SHORT).show()
-                    refreshModels(modelManager.getSelectedModelPathSync())
+        viewLifecycleOwner.lifecycleScope.launch {
+            modelManager.setLoading(true, "Importing model...")
+            
+            val importedFile = withContext(Dispatchers.IO) {
+                val metadata = requireContext().contentResolver.openInputStream(uri)?.use {
+                    GgufMetadataReader.create().readStructuredMetadata(it)
                 }
+
+                val fileName = if (metadata != null) {
+                    metadata.filename() + ".gguf"
+                } else {
+                    uri.lastPathSegment?.substringAfterLast('/') ?: "model-${System.currentTimeMillis()}.gguf"
+                }
+
+                requireContext().contentResolver.openInputStream(uri)?.use { input ->
+                    modelManager.importModel(fileName, input)
+                }
+            }
+
+            modelManager.setLoading(false)
+            
+            if (importedFile != null) {
+                Toast.makeText(context, "Imported ${importedFile.name}", Toast.LENGTH_SHORT).show()
+                refreshModels(modelManager.getSelectedModelPathSync())
+            } else {
+                Toast.makeText(context, "Failed to import model", Toast.LENGTH_SHORT).show()
             }
         }
     }

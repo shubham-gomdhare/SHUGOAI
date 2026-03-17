@@ -36,6 +36,8 @@ class MainActivity : AppCompatActivity(), HomeFragment.HomeListener {
     private lateinit var toolbarTitle: TextView
     private lateinit var statusSubtitleTv: TextView
     private lateinit var modelStatusTv: TextView
+    private lateinit var loadingOverlay: View
+    private lateinit var loadingText: TextView
     
     private lateinit var modelManager: ModelManager
 
@@ -52,6 +54,8 @@ class MainActivity : AppCompatActivity(), HomeFragment.HomeListener {
         toolbar = findViewById(R.id.toolbar)
         toolbarTitle = findViewById(R.id.toolbar_title)
         statusSubtitleTv = findViewById(R.id.status_subtitle)
+        loadingOverlay = findViewById(R.id.global_loading_overlay)
+        loadingText = findViewById(R.id.global_loading_text)
 
         val navView = findViewById<NavigationView>(R.id.nav_view)
         val navHeader = navView.findViewById<LinearLayout>(R.id.nav_header)
@@ -101,6 +105,18 @@ class MainActivity : AppCompatActivity(), HomeFragment.HomeListener {
         lifecycleScope.launch {
             modelManager.selectedModelPath.collectLatest { path ->
                 modelStatusTv.text = path?.let { File(it).name } ?: getString(R.string.no_model_selected)
+            }
+        }
+
+        lifecycleScope.launch {
+            modelManager.isCurrentlyLoading.collectLatest { isLoading ->
+                loadingOverlay.visibility = if (isLoading) View.VISIBLE else View.GONE
+            }
+        }
+
+        lifecycleScope.launch {
+            modelManager.loadingText.collectLatest { text ->
+                loadingText.text = text
             }
         }
     }
