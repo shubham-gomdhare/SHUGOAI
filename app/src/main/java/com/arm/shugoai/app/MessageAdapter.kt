@@ -38,14 +38,25 @@ class MessageAdapter(
 
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
         val message = messages[position]
-        if (holder is UserMessageViewHolder || holder is AssistantMessageViewHolder) {
-            val textView = holder.itemView.findViewById<TextView>(R.id.msg_content)
-            textView.text = message.content
+        when (holder) {
+            is UserMessageViewHolder -> holder.bind(message)
+            is AssistantMessageViewHolder -> holder.bind(message)
         }
     }
 
     override fun getItemCount(): Int = messages.size
 
-    class UserMessageViewHolder(view: View) : RecyclerView.ViewHolder(view)
-    class AssistantMessageViewHolder(view: View) : RecyclerView.ViewHolder(view)
+    class UserMessageViewHolder(view: View) : RecyclerView.ViewHolder(view) {
+        private val contentTv: TextView = view.findViewById(R.id.msg_content)
+        fun bind(message: Message) {
+            contentTv.text = message.content
+        }
+    }
+
+    class AssistantMessageViewHolder(view: View) : RecyclerView.ViewHolder(view) {
+        private val contentTv: TextView = view.findViewById(R.id.msg_content)
+        fun bind(message: Message) {
+            contentTv.text = message.content
+        }
+    }
 }

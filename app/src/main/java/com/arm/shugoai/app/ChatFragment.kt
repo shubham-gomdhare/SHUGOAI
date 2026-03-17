@@ -9,6 +9,8 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -36,10 +38,12 @@ class ChatFragment : Fragment(R.layout.layout_feature_chat) {
     private lateinit var loadingScreen: LinearLayout
     private lateinit var loadingTv: TextView
     private lateinit var inputContainer: View
+    private lateinit var modelStatusBadgeText: TextView
 
     private lateinit var engine: InferenceEngine
     private var generationJob: Job? = null
     private var isModelReady = false
+    private var selectedModelName: String? = null
     private val messages = mutableListOf<Message>()
     private val messageAdapter = MessageAdapter(messages)
 
@@ -58,10 +62,15 @@ class ChatFragment : Fragment(R.layout.layout_feature_chat) {
         loadingScreen = view.findViewById(R.id.loading_screen)
         loadingTv = view.findViewById(R.id.loading_text)
         inputContainer = view.findViewById(R.id.input_container)
+        modelStatusBadgeText = view.findViewById(R.id.model_status_badge_text)
 
         setupChat()
 
         view.findViewById<View>(R.id.btn_select_model).setOnClickListener {
+            selectModel()
+        }
+
+        view.findViewById<View>(R.id.model_status_badge).setOnClickListener {
             selectModel()
         }
 
@@ -76,6 +85,13 @@ class ChatFragment : Fragment(R.layout.layout_feature_chat) {
             userInputEt.isEnabled = true
             userActionFab.isEnabled = true
             stopBtn.visibility = View.GONE
+        }
+
+        // Handle Keyboard sticking
+        ViewCompat.setOnApplyWindowInsetsListener(view.findViewById(R.id.chat_root)) { v, insets ->
+            val imeInsets = insets.getInsets(WindowInsetsCompat.Type.ime())
+            v.setPadding(0, 0, 0, imeInsets.bottom)
+            insets
         }
 
         lifecycleScope.launch(Dispatchers.Default) {
@@ -99,6 +115,7 @@ class ChatFragment : Fragment(R.layout.layout_feature_chat) {
             messagesRv.visibility = View.VISIBLE
             inputContainer.visibility = View.VISIBLE
             modelSelectionScreen.visibility = View.GONE
+            modelStatusBadgeText.text = selectedModelName ?: getString(R.string.no_model_selected)
             addWelcomeMessage()
         } else {
             messagesRv.visibility = View.GONE
@@ -130,6 +147,7 @@ class ChatFragment : Fragment(R.layout.layout_feature_chat) {
                 if (modelFile != null) {
                     loadModel(modelFile)
                     withContext(Dispatchers.Main) {
+                        selectedModelName = modelName
                         isModelReady = true
                         showInitialUI()
                         userInputEt.hint = getString(R.string.type_and_send)
@@ -185,21 +203,24 @@ class ChatFragment : Fragment(R.layout.layout_feature_chat) {
             userActionFab.isEnabled = false
             stopBtn.visibility = View.VISIBLE
 
-            messages.add(Message(UUID.randomUUID().toString(), userMsg, true))
+            val userMessage = Message(UUID.randomUUID().toString(), userMsg, true)
             val assistantMessage = Message(UUID.randomUUID().toString(), "", false)
+            
+            messages.add(userMessage)
             messages.add(assistantMessage)
+            
             messageAdapter.notifyItemRangeInserted(messages.size - 2, 2)
-            messagesRv.smoothScrollToPosition(messages.size - 1)
+            messagesRv.scrollToPosition(messages.size - 1)
 
             generationJob = lifecycleScope.launch(Dispatchers.Default) {
                 val response = engine.sendUserPrompt(userMsg)
                 val responseBuilder = StringBuilder()
-                response.collect {
-                    responseBuilder.append(it)
+                response.collect { token ->
+                    responseBuilder.append(token)
                     withContext(Dispatchers.Main) {
-                        val index = messages.indexOf(assistantMessage)
+                        val index = messages.indexOfFirst { it.id == assistantMessage.id }
                         if (index != -1) {
-                            messages[index] = assistantMessage.copy(content = responseBuilder.toString())
+                            messages[index] = messages[index].copy(content = responseBuilder.toString())
                             messageAdapter.notifyItemChanged(index)
                             messagesRv.scrollToPosition(messages.size - 1)
                         }
@@ -216,29 +237,31 @@ class ChatFragment : Fragment(R.layout.layout_feature_chat) {
 
     override fun onDestroyView() {
         generationJob?.cancel()
+        // Do not call engine.destroy() here as it's a singleton and will break re-entry.
+        // Instead, we clean up the model resources to allow fresh loading on re-entry.
         if (::engine.isInitialized) {
-            engine.destroy()
+            engine.cleanUp()
         }
         super.onDestroyView()
     }
 
-    private fun GgufMetadata.filename(): String = when {
-        basic.name != null -> {
-            basic.name?.let { name ->
+    private fun GgufMetadata.filename(): String {
+        return when {
+            basic.name != null -> {
+                val name = basic.name!!
                 basic.sizeLabel?.let { size ->
                     "$name-$size"
                 } ?: name
             }
-        }
-        architecture?.architecture != null -> {
-            architecture?.architecture?.let { arch ->
+            architecture?.architecture != null -> {
+                val arch = architecture!!.architecture!!
                 basic.uuid?.let { uuid ->
                     "$arch-$uuid"
                 } ?: "$arch-${System.currentTimeMillis()}"
             }
+            else -> {
+                "model-${System.currentTimeMillis().toString(16)}"
+            }
         }
-        else -> {
-            "model-${System.currentTimeMillis().toString(16)}"
-        }
-    } ?: "unknown-model"
+    }
 }
