@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.InputStream
 
@@ -37,6 +38,9 @@ class ModelManager private constructor(context: Context) {
 
     private val _isCurrentlyLoading = MutableStateFlow(false)
     val isCurrentlyLoading: StateFlow<Boolean> = _isCurrentlyLoading.asStateFlow()
+
+    private val _loadingText = MutableStateFlow("")
+    val loadingText: StateFlow<String> = _loadingText.asStateFlow()
 
     val engine: InferenceEngine = AiChat.getInferenceEngine(appContext)
 
@@ -63,7 +67,7 @@ class ModelManager private constructor(context: Context) {
     }
 
     private suspend fun loadModelIntoEngine(path: String) {
-        _isCurrentlyLoading.value = true
+        setLoading(true, "Loading model...")
         _isModelLoaded.value = false
         try {
             safeCleanUp()
@@ -72,8 +76,13 @@ class ModelManager private constructor(context: Context) {
         } catch (e: Exception) {
             _isModelLoaded.value = false
         } finally {
-            _isCurrentlyLoading.value = false
+            setLoading(false)
         }
+    }
+
+    fun setLoading(isLoading: Boolean, text: String = "") {
+        _isCurrentlyLoading.value = isLoading
+        _loadingText.value = text
     }
 
     private fun safeCleanUp() {
@@ -107,13 +116,13 @@ class ModelManager private constructor(context: Context) {
         }
     }
 
-    suspend fun importModel(fileName: String, inputStream: InputStream): File {
+    suspend fun importModel(fileName: String, inputStream: InputStream): File = withContext(Dispatchers.IO) {
         val modelsDir = getModelsDir()
         val targetFile = File(modelsDir, fileName)
         targetFile.outputStream().use { output ->
             inputStream.copyTo(output)
         }
-        return targetFile
+        targetFile
     }
 
     fun deleteModel(file: File) {
