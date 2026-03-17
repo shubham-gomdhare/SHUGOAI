@@ -1,4 +1,4 @@
-package com.arm.shugoai.app
+package com.arm.shugoai.app.ui.fragments
 
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -8,6 +8,11 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.arm.shugoai.app.MainActivity
+import com.arm.shugoai.app.R
+import com.arm.shugoai.app.manager.ModelManager
+import com.arm.shugoai.app.model.MenuItem
+import com.arm.shugoai.app.ui.adapters.MenuAdapter
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
@@ -56,7 +61,7 @@ class HomeFragment : Fragment() {
             listener?.onSelectModelRequested()
         }
 
-        lifecycleScope.launch {
+        viewLifecycleOwner.lifecycleScope.launch {
             modelManager.selectedModelPath.collectLatest { path ->
                 if (path == null) {
                     welcomeContainer.visibility = View.VISIBLE

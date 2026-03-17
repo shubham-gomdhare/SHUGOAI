@@ -1,6 +1,7 @@
 package com.arm.shugoai.app
 
 import android.app.Application
+import com.arm.shugoai.app.manager.ModelManager
 
 class ShugoAiApplication : Application() {
     override fun onCreate() {

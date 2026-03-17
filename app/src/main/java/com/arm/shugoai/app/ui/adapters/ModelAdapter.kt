@@ -1,4 +1,4 @@
-package com.arm.shugoai.app
+package com.arm.shugoai.app.ui.adapters
 
 import android.view.LayoutInflater
 import android.view.View
@@ -6,6 +6,7 @@ import android.view.ViewGroup
 import android.widget.RadioButton
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
+import com.arm.shugoai.app.R
 import com.google.android.material.card.MaterialCardView
 import java.io.File
 
