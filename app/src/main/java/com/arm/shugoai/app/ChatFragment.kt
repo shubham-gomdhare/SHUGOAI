@@ -1,31 +1,24 @@
 package com.arm.shugoai.app
 
-import android.net.Uri
 import android.os.Bundle
 import android.view.View
 import android.widget.EditText
 import android.widget.ImageButton
 import android.widget.LinearLayout
 import android.widget.TextView
-import android.widget.Toast
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.arm.shugoai.AiChat
 import com.arm.shugoai.InferenceEngine
-import com.arm.shugoai.gguf.GgufMetadata
-import com.arm.shugoai.gguf.GgufMetadataReader
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
-import java.io.FileOutputStream
-import java.io.InputStream
 import java.util.UUID
 
 class ChatFragment : Fragment(R.layout.layout_feature_chat) {
@@ -34,57 +27,40 @@ class ChatFragment : Fragment(R.layout.layout_feature_chat) {
     private lateinit var userInputEt: EditText
     private lateinit var userActionFab: View
     private lateinit var stopBtn: ImageButton
-    private lateinit var modelSelectionScreen: LinearLayout
     private lateinit var loadingScreen: LinearLayout
     private lateinit var loadingTv: TextView
-    private lateinit var inputContainer: View
     private lateinit var modelStatusBadgeText: TextView
 
-    private lateinit var engine: InferenceEngine
+    private lateinit var modelManager: ModelManager
     private var generationJob: Job? = null
-    private var isModelReady = false
-    private var selectedModelName: String? = null
     private val messages = mutableListOf<Message>()
     private val messageAdapter = MessageAdapter(messages)
-
-    private val getContent = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
-        uri?.let { handleSelectedModel(it) }
-    }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        modelManager = ModelManager.getInstance(requireContext())
         messagesRv = view.findViewById(R.id.messages)
         userInputEt = view.findViewById(R.id.user_input)
         userActionFab = view.findViewById(R.id.fab)
         stopBtn = view.findViewById(R.id.stop_btn)
-        modelSelectionScreen = view.findViewById(R.id.model_selection_screen)
         loadingScreen = view.findViewById(R.id.loading_screen)
         loadingTv = view.findViewById(R.id.loading_text)
-        inputContainer = view.findViewById(R.id.input_container)
         modelStatusBadgeText = view.findViewById(R.id.model_status_badge_text)
 
         setupChat()
 
-        view.findViewById<View>(R.id.btn_select_model).setOnClickListener {
-            selectModel()
-        }
-
         view.findViewById<View>(R.id.model_status_badge).setOnClickListener {
-            selectModel()
+            navigateToModelManager()
         }
 
         userActionFab.setOnClickListener {
-            if (isModelReady) {
-                handleUserInput()
-            }
+            handleUserInput()
         }
 
         stopBtn.setOnClickListener {
             generationJob?.cancel()
-            userInputEt.isEnabled = true
-            userActionFab.isEnabled = true
-            stopBtn.visibility = View.GONE
+            updateUiState(isGenerating = false)
         }
 
         // Handle Keyboard sticking
@@ -94,11 +70,27 @@ class ChatFragment : Fragment(R.layout.layout_feature_chat) {
             insets
         }
 
-        lifecycleScope.launch(Dispatchers.Default) {
-            engine = AiChat.getInferenceEngine(requireContext().applicationContext)
+        lifecycleScope.launch {
+            modelManager.isModelLoaded.collectLatest { isLoaded ->
+                if (isLoaded) {
+                    loadingScreen.visibility = View.GONE
+                    userInputEt.isEnabled = true
+                    userActionFab.isEnabled = true
+                } else {
+                    loadingScreen.visibility = View.VISIBLE
+                    loadingTv.text = getString(R.string.loading_model)
+                    userInputEt.isEnabled = false
+                    userActionFab.isEnabled = false
+                }
+            }
         }
 
-        showInitialUI()
+        lifecycleScope.launch {
+            modelManager.selectedModelPath.collectLatest { path ->
+                modelStatusBadgeText.text = path?.let { File(it).name } ?: getString(R.string.no_model_selected)
+                addWelcomeMessage()
+            }
+        }
     }
 
     private fun setupChat() {
@@ -106,66 +98,13 @@ class ChatFragment : Fragment(R.layout.layout_feature_chat) {
         messagesRv.adapter = messageAdapter
     }
 
-    private fun selectModel() {
-        getContent.launch(arrayOf("*/*"))
-    }
-
-    private fun showInitialUI() {
-        if (isModelReady) {
-            messagesRv.visibility = View.VISIBLE
-            inputContainer.visibility = View.VISIBLE
-            modelSelectionScreen.visibility = View.GONE
-            modelStatusBadgeText.text = selectedModelName ?: getString(R.string.no_model_selected)
-            addWelcomeMessage()
-        } else {
-            messagesRv.visibility = View.GONE
-            inputContainer.visibility = View.GONE
-            modelSelectionScreen.visibility = View.VISIBLE
-        }
-        loadingScreen.visibility = View.GONE
-    }
-
-    private fun handleSelectedModel(uri: Uri) {
-        clearConversation()
-        isModelReady = false
-
-        modelSelectionScreen.visibility = View.GONE
-        loadingScreen.visibility = View.VISIBLE
-        loadingTv.text = getString(R.string.parsing_gguf)
-
-        lifecycleScope.launch(Dispatchers.IO) {
-            val metadata = requireContext().contentResolver.openInputStream(uri)?.use {
-                GgufMetadataReader.create().readStructuredMetadata(it)
-            }
-
-            if (metadata != null) {
-                val modelName = metadata.filename() + ".gguf"
-                val modelFile = requireContext().contentResolver.openInputStream(uri)?.use { input ->
-                    ensureModelFile(modelName, input)
-                }
-
-                if (modelFile != null) {
-                    loadModel(modelFile)
-                    withContext(Dispatchers.Main) {
-                        selectedModelName = modelName
-                        isModelReady = true
-                        showInitialUI()
-                        userInputEt.hint = getString(R.string.type_and_send)
-                        userInputEt.isEnabled = true
-                    }
-                }
-            } else {
-                withContext(Dispatchers.Main) {
-                    Toast.makeText(context, "Failed to parse model metadata.", Toast.LENGTH_SHORT).show()
-                    showInitialUI()
-                }
-            }
-        }
+    private fun navigateToModelManager() {
+        (activity as? MainActivity)?.showModelManager()
     }
 
     private fun addWelcomeMessage() {
         if (messages.isEmpty()) {
-            messages.add(Message(UUID.randomUUID().toString(), getString(R.string.welcome_message), false))
+            messages.add(Message(UUID.randomUUID().toString(), "Model is ready. How can I help you today?", false))
             messageAdapter.notifyItemInserted(0)
         }
     }
@@ -176,32 +115,11 @@ class ChatFragment : Fragment(R.layout.layout_feature_chat) {
         messageAdapter.notifyItemRangeRemoved(0, count)
     }
 
-    private suspend fun ensureModelFile(modelName: String, input: InputStream): File = withContext(Dispatchers.IO) {
-        val modelsDir = File(requireContext().filesDir, "models").apply { mkdirs() }
-        File(modelsDir, modelName).also { file ->
-            if (!file.exists()) {
-                withContext(Dispatchers.Main) {
-                    loadingTv.text = getString(R.string.copying_file)
-                }
-                FileOutputStream(file).use { output -> input.copyTo(output) }
-            }
-        }
-    }
-
-    private suspend fun loadModel(modelFile: File) {
-        withContext(Dispatchers.Main) {
-            loadingTv.text = getString(R.string.loading_model)
-        }
-        engine.loadModel(modelFile.path)
-    }
-
     private fun handleUserInput() {
         val userMsg = userInputEt.text.toString()
-        if (userMsg.isNotBlank()) {
+        if (userMsg.isNotBlank() && modelManager.isModelLoaded.value) {
             userInputEt.text.clear()
-            userInputEt.isEnabled = false
-            userActionFab.isEnabled = false
-            stopBtn.visibility = View.VISIBLE
+            updateUiState(isGenerating = true)
 
             val userMessage = Message(UUID.randomUUID().toString(), userMsg, true)
             val assistantMessage = Message(UUID.randomUUID().toString(), "", false)
@@ -213,55 +131,39 @@ class ChatFragment : Fragment(R.layout.layout_feature_chat) {
             messagesRv.scrollToPosition(messages.size - 1)
 
             generationJob = lifecycleScope.launch(Dispatchers.Default) {
-                val response = engine.sendUserPrompt(userMsg)
-                val responseBuilder = StringBuilder()
-                response.collect { token ->
-                    responseBuilder.append(token)
-                    withContext(Dispatchers.Main) {
-                        val index = messages.indexOfFirst { it.id == assistantMessage.id }
-                        if (index != -1) {
-                            messages[index] = messages[index].copy(content = responseBuilder.toString())
-                            messageAdapter.notifyItemChanged(index)
-                            messagesRv.scrollToPosition(messages.size - 1)
+                try {
+                    val response = modelManager.engine.sendUserPrompt(userMsg)
+                    val responseBuilder = StringBuilder()
+                    response.collect { token ->
+                        responseBuilder.append(token)
+                        withContext(Dispatchers.Main) {
+                            val index = messages.indexOfFirst { it.id == assistantMessage.id }
+                            if (index != -1) {
+                                messages[index] = messages[index].copy(content = responseBuilder.toString())
+                                messageAdapter.notifyItemChanged(index)
+                                messagesRv.scrollToPosition(messages.size - 1)
+                            }
                         }
                     }
-                }
-                withContext(Dispatchers.Main) {
-                    userInputEt.isEnabled = true
-                    userActionFab.isEnabled = true
-                    stopBtn.visibility = View.GONE
+                } catch (e: Exception) {
+                    // Handle error
+                } finally {
+                    withContext(Dispatchers.Main) {
+                        updateUiState(isGenerating = false)
+                    }
                 }
             }
         }
+    }
+
+    private fun updateUiState(isGenerating: Boolean) {
+        userInputEt.isEnabled = !isGenerating
+        userActionFab.isEnabled = !isGenerating
+        stopBtn.visibility = if (isGenerating) View.VISIBLE else View.GONE
     }
 
     override fun onDestroyView() {
         generationJob?.cancel()
-        // Do not call engine.destroy() here as it's a singleton and will break re-entry.
-        // Instead, we clean up the model resources to allow fresh loading on re-entry.
-        if (::engine.isInitialized) {
-            engine.cleanUp()
-        }
         super.onDestroyView()
-    }
-
-    private fun GgufMetadata.filename(): String {
-        return when {
-            basic.name != null -> {
-                val name = basic.name!!
-                basic.sizeLabel?.let { size ->
-                    "$name-$size"
-                } ?: name
-            }
-            architecture?.architecture != null -> {
-                val arch = architecture!!.architecture!!
-                basic.uuid?.let { uuid ->
-                    "$arch-$uuid"
-                } ?: "$arch-${System.currentTimeMillis()}"
-            }
-            else -> {
-                "model-${System.currentTimeMillis().toString(16)}"
-            }
-        }
     }
 }

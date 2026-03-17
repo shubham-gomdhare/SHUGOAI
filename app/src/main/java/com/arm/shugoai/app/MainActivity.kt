@@ -16,23 +16,31 @@ import androidx.core.view.updatePadding
 import androidx.drawerlayout.widget.DrawerLayout
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.commit
+import androidx.lifecycle.lifecycleScope
 import com.google.android.material.appbar.AppBarLayout
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.navigation.NavigationView
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
+import java.io.File
 
 class MainActivity : AppCompatActivity(), HomeFragment.HomeListener {
 
-    // Android views
     private lateinit var drawerLayout: DrawerLayout
     private lateinit var appBarLayout: AppBarLayout
     private lateinit var toolbar: MaterialToolbar
     private lateinit var toolbarTitle: TextView
     private lateinit var statusSubtitleTv: TextView
+    private lateinit var modelStatusTv: TextView
+    
+    private lateinit var modelManager: ModelManager
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+
+        modelManager = ModelManager.getInstance(this)
 
         // Find common views
         drawerLayout = findViewById(R.id.drawer_layout)
@@ -43,6 +51,12 @@ class MainActivity : AppCompatActivity(), HomeFragment.HomeListener {
 
         val navView = findViewById<NavigationView>(R.id.nav_view)
         val navHeader = navView.findViewById<LinearLayout>(R.id.nav_header)
+        modelStatusTv = navHeader.findViewById(R.id.gguf)
+
+        navHeader.findViewById<View>(R.id.btn_change_model).setOnClickListener {
+            drawerLayout.closeDrawer(GravityCompat.START)
+            showModelManager()
+        }
 
         // Handle window insets
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main_content)) { _, insets ->
@@ -72,18 +86,37 @@ class MainActivity : AppCompatActivity(), HomeFragment.HomeListener {
         }
 
         if (savedInstanceState == null) {
-            val homeFragment = HomeFragment().apply {
-                setHomeListener(this@MainActivity)
-            }
-            supportFragmentManager.commit {
-                replace(R.id.feature_container, homeFragment)
-            }
+            showHome()
         }
 
         supportFragmentManager.addOnBackStackChangedListener {
             updateToolbarNavigationIcon()
         }
-        updateToolbarNavigationIcon() // Initial check
+        updateToolbarNavigationIcon()
+
+        lifecycleScope.launch {
+            modelManager.selectedModelPath.collectLatest { path ->
+                modelStatusTv.text = path?.let { File(it).name } ?: getString(R.string.no_model_selected)
+            }
+        }
+    }
+
+    override fun onSelectModelRequested() {
+        showModelManager()
+    }
+
+    fun showModelManager() {
+        navigateTo(ModelManagerFragment(), "ModelManager")
+        toolbarTitle.text = getString(R.string.models_title)
+    }
+
+    private fun showHome() {
+        val homeFragment = HomeFragment().apply {
+            setHomeListener(this@MainActivity)
+        }
+        supportFragmentManager.commit {
+            replace(R.id.feature_container, homeFragment, "Home")
+        }
     }
 
     private fun updateToolbarNavigationIcon() {
@@ -109,7 +142,6 @@ class MainActivity : AppCompatActivity(), HomeFragment.HomeListener {
                     MENU_ID_TODOS -> getString(R.string.menu_todos)
                     MENU_ID_MEETING -> getString(R.string.menu_meeting_recorder)
                     MENU_ID_REMINDERS -> getString(R.string.menu_reminders)
-                    MENU_ID_MULTI_MODEL -> getString(R.string.menu_multi_model)
                     MENU_ID_THEMING -> getString(R.string.menu_theming)
                     else -> "Feature"
                 }
@@ -132,7 +164,6 @@ class MainActivity : AppCompatActivity(), HomeFragment.HomeListener {
         const val MENU_ID_TODOS = 4
         const val MENU_ID_MEETING = 5
         const val MENU_ID_REMINDERS = 6
-        const val MENU_ID_MULTI_MODEL = 7
         const val MENU_ID_THEMING = 8
     }
 }
