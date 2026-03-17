@@ -11,7 +11,7 @@
     <string name="welcome_title">SHUGO AI</string>
     <string name="welcome_subtitle">Your private, local AI assistant.</string>
     <string name="select_model">Select Model</string>
-    <string name="models_title">Models</string>
+    <string name="models_title">Model Manager</string>
     <string name="change_model">Change Model</string>
     <string name="clear_chat">Clear Chat</string>
     <string name="stop_description">Stop generation</string>
@@ -21,6 +21,11 @@
     <string name="welcome_message">Hello! I\'m ShuGo AI. Please load a GGUF model to begin.</string>
     <string name="load_model_to_start">Load a model to start...</string>
 
+    <string name="no_models_found">No models found. Import one to start.</string>
+    <string name="import_model">Import Model (.gguf)</string>
+    <string name="delete_model">Delete Model</string>
+    <string name="model_deleted">Model deleted</string>
+
     <!-- Main Menu Tiles -->
     <string name="menu_chat">Chat</string>
     <string name="menu_permissions">Permissions Manager</string>
@@ -28,6 +33,6 @@
     <string name="menu_todos">AI-Powered To-Dos</string>
     <string name="menu_meeting_recorder">Meeting Recorder</string>
     <string name="menu_reminders">Reminders &amp; Notifications</string>
-    <string name="menu_multi_model">Multi-Model Support</string>
+    <string name="menu_multi_model">Model Manager</string>
     <string name="menu_theming">Theming &amp; Customization</string>
 </resources>

@@ -15,12 +15,11 @@
         android:clipToPadding="false"
         android:paddingTop="8dp"
         android:paddingBottom="8dp"
-        android:visibility="gone"
         app:layout_constraintBottom_toTopOf="@+id/input_container"
         app:layout_constraintTop_toTopOf="parent"
         tools:listitem="@layout/item_message_assistant" />
 
-    <!-- Loading Screen Overlay -->
+    <!-- Loading Screen Overlay (for when model is loading) -->
     <LinearLayout
         android:id="@+id/loading_screen"
         android:layout_width="match_parent"
@@ -51,52 +50,6 @@
             android:textSize="16sp" />
     </LinearLayout>
 
-    <!-- Initial Welcome Screen / Model Selection -->
-    <LinearLayout
-        android:id="@+id/model_selection_screen"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:gravity="center"
-        android:orientation="vertical"
-        android:padding="32dp"
-        android:visibility="gone"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintTop_toTopOf="parent">
-
-        <ImageView
-            android:layout_width="80dp"
-            android:layout_height="80dp"
-            android:contentDescription="@string/app_logo_description"
-            android:src="@drawable/outline_folder_open_24"
-            app:tint="@color/purple_200" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
-            android:text="@string/welcome_title"
-            android:textColor="@color/white"
-            android:textSize="24sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:gravity="center"
-            android:text="@string/welcome_subtitle"
-            android:textColor="@color/chat_assistant_text"
-            android:textSize="14sp" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btn_select_model"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
-            android:text="@string/select_model"
-            app:cornerRadius="12dp" />
-    </LinearLayout>
-
     <!-- Input Area Container -->
     <LinearLayout
         android:id="@+id/input_container"
@@ -104,7 +57,6 @@
         android:layout_height="wrap_content"
         android:orientation="vertical"
         android:padding="12dp"
-        android:visibility="gone"
         app:layout_constraintBottom_toBottomOf="parent">
 
         <!-- Model Status Badge -->
@@ -160,7 +112,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:background="@drawable/bg_input_field"
-                android:hint="@string/load_model_to_start"
+                android:hint="@string/type_and_send"
                 android:importantForAutofill="no"
                 android:inputType="textMultiLine"
                 android:maxLines="4"
