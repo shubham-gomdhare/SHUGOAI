@@ -1,4 +1,4 @@
-package com.arm.shugoai.app
+package com.arm.shugoai.app.manager
 
 import android.content.Context
 import androidx.datastore.core.DataStore

@@ -70,10 +70,10 @@
                 android:visibility="visible"
                 tools:listitem="@layout/item_menu_tile" />
 
-            <!-- Chat Feature Layout (Included for simplicity, could be dynamically added) -->
+            <!-- Chat Feature Layout -->
             <include
                 android:id="@+id/chat_feature_layout"
-                layout="@layout/layout_feature_chat"
+                layout="@layout/fragment_chat"
                 android:visibility="gone" />
 
         </FrameLayout>

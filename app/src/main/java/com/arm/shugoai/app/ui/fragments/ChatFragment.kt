@@ -1,4 +1,4 @@
-package com.arm.shugoai.app
+package com.arm.shugoai.app.ui.fragments
 
 import android.os.Bundle
 import android.view.View
@@ -12,7 +12,11 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.arm.shugoai.InferenceEngine
+import com.arm.shugoai.app.MainActivity
+import com.arm.shugoai.app.R
+import com.arm.shugoai.app.manager.ModelManager
+import com.arm.shugoai.app.model.Message
+import com.arm.shugoai.app.ui.adapters.MessageAdapter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.collectLatest
@@ -21,7 +25,7 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.UUID
 
-class ChatFragment : Fragment(R.layout.layout_feature_chat) {
+class ChatFragment : Fragment(R.layout.fragment_chat) {
 
     private lateinit var messagesRv: RecyclerView
     private lateinit var userInputEt: EditText
@@ -70,7 +74,7 @@ class ChatFragment : Fragment(R.layout.layout_feature_chat) {
             insets
         }
 
-        lifecycleScope.launch {
+        viewLifecycleOwner.lifecycleScope.launch {
             modelManager.isModelLoaded.collectLatest { isLoaded ->
                 if (isLoaded) {
                     loadingScreen.visibility = View.GONE
@@ -85,7 +89,7 @@ class ChatFragment : Fragment(R.layout.layout_feature_chat) {
             }
         }
 
-        lifecycleScope.launch {
+        viewLifecycleOwner.lifecycleScope.launch {
             modelManager.selectedModelPath.collectLatest { path ->
                 modelStatusBadgeText.text = path?.let { File(it).name } ?: getString(R.string.no_model_selected)
                 addWelcomeMessage()

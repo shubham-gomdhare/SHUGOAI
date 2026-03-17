@@ -17,6 +17,10 @@ import androidx.drawerlayout.widget.DrawerLayout
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.commit
 import androidx.lifecycle.lifecycleScope
+import com.arm.shugoai.app.manager.ModelManager
+import com.arm.shugoai.app.ui.fragments.ChatFragment
+import com.arm.shugoai.app.ui.fragments.HomeFragment
+import com.arm.shugoai.app.ui.fragments.ModelManagerFragment
 import com.google.android.material.appbar.AppBarLayout
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.navigation.NavigationView

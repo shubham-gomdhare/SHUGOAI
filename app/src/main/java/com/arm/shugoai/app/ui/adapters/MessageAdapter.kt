@@ -1,16 +1,12 @@
-package com.arm.shugoai.app
+package com.arm.shugoai.app.ui.adapters
 
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
-
-data class Message(
-    val id: String,
-    val content: String,
-    val isUser: Boolean
-)
+import com.arm.shugoai.app.R
+import com.arm.shugoai.app.model.Message
 
 class MessageAdapter(
     private val messages: List<Message>

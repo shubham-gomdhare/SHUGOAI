@@ -1,4 +1,4 @@
-package com.arm.shugoai.app
+package com.arm.shugoai.app.ui.fragments
 
 import android.net.Uri
 import android.os.Bundle
@@ -11,6 +11,9 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.arm.shugoai.app.R
+import com.arm.shugoai.app.manager.ModelManager
+import com.arm.shugoai.app.ui.adapters.ModelAdapter
 import com.arm.shugoai.gguf.GgufMetadataReader
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collectLatest
@@ -37,7 +40,7 @@ class ModelManagerFragment : Fragment(R.layout.fragment_model_manager) {
         tvEmpty = view.findViewById(R.id.tv_empty)
 
         adapter = ModelAdapter(emptyList(), null, { model ->
-            lifecycleScope.launch {
+            viewLifecycleOwner.lifecycleScope.launch {
                 modelManager.selectModel(model.absolutePath)
             }
         }, { model ->
@@ -51,7 +54,7 @@ class ModelManagerFragment : Fragment(R.layout.fragment_model_manager) {
             getContent.launch(arrayOf("*/*"))
         }
 
-        lifecycleScope.launch {
+        viewLifecycleOwner.lifecycleScope.launch {
             modelManager.selectedModelPath.collectLatest { path ->
                 refreshModels(path)
             }
@@ -65,7 +68,7 @@ class ModelManagerFragment : Fragment(R.layout.fragment_model_manager) {
     }
 
     private fun importModel(uri: Uri) {
-        lifecycleScope.launch(Dispatchers.IO) {
+        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
             val metadata = requireContext().contentResolver.openInputStream(uri)?.use {
                 GgufMetadataReader.create().readStructuredMetadata(it)
             }
@@ -73,7 +76,6 @@ class ModelManagerFragment : Fragment(R.layout.fragment_model_manager) {
             val fileName = if (metadata != null) {
                 metadata.filename() + ".gguf"
             } else {
-                // Fallback to URI last path segment or timestamp
                 uri.lastPathSegment?.substringAfterLast('/') ?: "model-${System.currentTimeMillis()}.gguf"
             }
 
@@ -96,7 +98,7 @@ class ModelManagerFragment : Fragment(R.layout.fragment_model_manager) {
             .setTitle(R.string.delete_model)
             .setMessage("Are you sure you want to delete ${model.name}?")
             .setPositiveButton("Delete") { _, _ ->
-                lifecycleScope.launch {
+                viewLifecycleOwner.lifecycleScope.launch {
                     val currentSelected = modelManager.getSelectedModelPathSync()
                     if (currentSelected == model.absolutePath) {
                         modelManager.selectModel(null)
